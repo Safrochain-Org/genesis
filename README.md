@@ -105,7 +105,7 @@ safrochaind init "$MONIKER" --chain-id safrochain-testnet
 ```bash
 echo "Enter the URL or local path to the testnet genesis.json file (e.g., https://raw.githubusercontent.com/Safrochain-Org/testnet/main/genesis.json):"
 read GENESIS_SOURCE
-if [[ $GENESIS_SOURCE == http* ]]; then
+if [[ $GENESIS_SOURCE == https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json ]]; then
     curl -o $HOME/.safrochain/config/genesis.json "$GENESIS_SOURCE"
 else
     cp "$GENESIS_SOURCE" $HOME/.safrochain/config/genesis.json
