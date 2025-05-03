@@ -9,7 +9,7 @@ This guide walks you through setting up a Safrochain testnet node and creating a
   - Windows users must install WSL2 and Ubuntu (see Step 1 for Windows).
 - **Internet**: Stable connection for cloning repositories and syncing the blockchain.
 - **Permissions**: Root/admin access for installing packages and configuring firewalls.
-- **Testnet Tokens**: Required for validator creation. Request from the Safrochain testnet faucet at https://faucet.safrochain.com (provides 5,000,000,000 saf per request).
+- **Testnet Tokens**: Required for validator creation. Request from the Safrochain testnet faucet at https://faucet.safrochain.com (provides 5,000 saf per request).
 
 ## 🚀 Setup Steps
 
@@ -405,12 +405,12 @@ fi
 echo "Enter a name for your validator wallet (e.g., validator):"
 read WALLET_NAME
 safrochaind keys add "$WALLET_NAME"
-echo "Your wallet address is displayed above. Visit https://faucet.safrochain.com, paste your address, and request 5,000,000,000 saf (5,000,000,000,000,000 Lovelace)."
+echo "Your wallet address is displayed above. Visit https://faucet.safrochain.com, paste your address, and request 5,000 saf (5,000,000,000 Lovelace)."
 ```
 
 **Notes**:
 - Save the mnemonic phrase securely (e.g., write it down offline). Losing it means losing access to your wallet.
-- Go to `https://faucet.safrochain.com`, enter your wallet address, and request tokens. Each request provides **5,000,000,000 saf** (equivalent to 5,000,000,000,000,000 Lovelace, as 1 saf = 1,000,000 Lovelace).
+- Go to `https://faucet.safrochain.com`, enter your wallet address, and request tokens. Each request provides **5,000 saf** (equivalent to 5,000,000,000 Lovelace, as 1 saf = 1,000,000 Lovelace).
 - Verify token receipt with:
   ```bash
   safrochaind query bank balances <your-wallet-address>
@@ -443,7 +443,7 @@ safrochaind tx staking create-validator \
 ```
 
 **Notes**:
-- **Obtaining Tokens**: Use the faucet at `https://faucet.safrochain.com` to request **5,000,000,000 saf** per request (5,000,000,000,000,000 Lovelace). If the faucet is down, check [Safrochain GitHub](https://github.com/Safrochain-Org) or join community channels (Discord, Telegram, or forum) to request tokens.
+- **Obtaining Tokens**: Use the faucet at `https://faucet.safrochain.com` to request **5,000 saf** per request (5,000,000 Lovelace). If the faucet is down, check [Safrochain GitHub](https://github.com/Safrochain-Org) or join community channels (Discord, Telegram, or forum) to request tokens.
 - Replace `<amount>` with the number of tokens to stake (e.g., `5000000000saf` for one faucet request). Check testnet rules for minimum staking amounts via the faucet or community.
 - Ensure your node is running when executing this command.
 - Verify validator status with `safrochaind query staking validators`.
@@ -480,7 +480,7 @@ safrochaind tx staking create-validator \
 ### Troubleshooting
 - **Node not starting**: Check `safrochaind.log` for errors (e.g., invalid genesis file, port conflicts).
 - **Sync issues**: Ensure the genesis file is correct and ports are open. Consider enabling state sync in `config.toml` if the blockchain is large.
-- **No tokens**: Use the faucet at `https://faucet.safrochain.com` (provides 5,000,000,000 saf). If unavailable, join Safrochain’s Discord, Telegram, or forum (check [Safrochain GitHub](https://github.com/Safrochain-Org)).
+- **No tokens**: Use the faucet at `https://faucet.safrochain.com` (provides 5,000 saf). If unavailable, join Safrochain’s Discord, Telegram, or forum (check [Safrochain GitHub](https://github.com/Safrochain-Org)).
 - **safrochaind not found**: Ensure `~/go/bin` is in your `PATH` (run `export PATH=$PATH:$HOME/go/bin` or check your shell config file).
 - **Wrong Go version**: If `go version` doesn’t show `go1.23.x`, remove existing Go (`sudo rm -rf /usr/local/go` on Linux/WSL2, `brew uninstall go` on macOS) and retry Step 1.
 - **Firewall issues**: Verify ports 26656, 26657, 1317, 9090 are open (`sudo ufw status` on Linux/WSL2, check macOS/Windows firewall settings).
