@@ -371,7 +371,12 @@ sudo pfctl -E
 
 ### Step 7: Start the Node
 
-**What it does**: Starts the Safrochain node in the background and logs output  ```bash
+**What it does**: Starts the Safrochain node in the background, redirects output to a log file, and verifies the node is running.
+
+**Prerequisites**: Configuration files and genesis file must be set up.
+
+**Code**:
+```bash
 safrochaind start > safrochaind.log 2>&1 &
 sleep 5
 if pgrep safrochaind > /dev/null; then
@@ -385,7 +390,7 @@ fi
 **Notes**:
 - Check logs with `cat safrochaind.log` or `tail -f safrochaind.log` if the node fails to start.
 - Verify node status with `curl http://localhost:26657/status`. It may take time to sync.
-- This step is identical across all platforms.
+- This step is identical across Linux, macOS, and Windows (WSL2).
 
 ---
 
