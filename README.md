@@ -7,7 +7,6 @@ This guide walks you through setting up a Safrochain testnet node and creating a
 - **System**: Linux (Ubuntu recommended), 2GB RAM, 20GB disk space.
 - **Internet**: Stable connection for cloning repositories and syncing the blockchain.
 - **Permissions**: Root access for installing packages and configuring firewalls (use `sudo` if needed).
-- **Genesis File**: You’ll need the Safrochain testnet `genesis.json` file (check [Safrochain GitHub](https://github.com/Safrochain-Org) or community channels).
 - **Testnet Tokens**: Required for validator creation (request from a Safrochain faucet or community).
 
 ## 🚀 Setup Steps
@@ -97,24 +96,25 @@ safrochaind init "$MONIKER" --chain-id safrochain-testnet
 
 ### Step 4: Configure Genesis File
 
-**What it does**: Downloads or copies the testnet `genesis.json` file, which defines the initial state of the Safrochain testnet.
+**What it does**: Downloads the official Safrochain testnet `genesis.json` file from the provided URL and places it in the node’s configuration directory.
 
-**Prerequisites**: You need the URL or local path to the testnet `genesis.json`. Check Safrochain’s GitHub, website, or community (e.g., Discord/Telegram).
+**Prerequisites**: Internet access to download the file.
 
 **Code**:
 ```bash
-echo "Enter the URL or local path to the testnet genesis.json file (e.g., https://raw.githubusercontent.com/Safrochain-Org/testnet/main/genesis.json):"
-read GENESIS_SOURCE
-if [[ $GENESIS_SOURCE == https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json ]]; then
-    curl -o $HOME/.safrochain/config/genesis.json "$GENESIS_SOURCE"
+curl -o $HOME/.safrochain/config/genesis.json https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json
+if [ -f "$HOME/.safrochain/config/genesis.json" ]; then
+    echo "genesis.json downloaded successfully."
 else
-    cp "$GENESIS_SOURCE" $HOME/.safrochain/config/genesis.json
+    echo "Error: Failed to download genesis.json. Check the URL or internet connection."
+    exit 1
 fi
 ```
 
 **Notes**:
-- If the genesis file is invalid or missing, the node won’t sync. Ensure the source is official.
-- Verify the file exists with `ls ~/.safrochain/config/genesis.json`.
+- The genesis file is sourced from `https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json`.
+- If the download fails, verify the URL is correct or check Safrochain’s GitHub/community for an updated link.
+- Confirm the file exists with `ls ~/.safrochain/config/genesis.json`.
 
 ---
 
