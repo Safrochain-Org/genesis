@@ -7,28 +7,44 @@ This guide walks you through setting up a Safrochain testnet node and creating a
 - **System**: Linux (Ubuntu recommended), 2GB RAM, 20GB disk space.
 - **Internet**: Stable connection for cloning repositories and syncing the blockchain.
 - **Permissions**: Root access for installing packages and configuring firewalls (use `sudo` if needed).
-- **Testnet Tokens**: Required for validator creation (request from a Safrochain faucet or community).
+- **Testnet Tokens**: Required for validator creation (request from the Safrochain testnet faucet at https://faucet.safrochain.com).
 
 ## 🚀 Setup Steps
 
 ### Step 1: Install Dependencies
 
-**What it does**: Installs Go, git, and make, which are required to build and run the Safrochain node. It also sets up the Go environment.
+**What it does**: Installs Go 1.23, git, and make, which are required to build and run the Safrochain node. It also sets up the Go environment.
 
 **Prerequisites**: Run as a user with `sudo` privileges.
 
 **Code**:
 ```bash
 sudo apt update
-sudo apt install -y golang git make
+sudo apt install -y git make
+# Download and install Go 1.23
+wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
+rm go1.23.0.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+# Set up Go environment
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 mkdir -p $GOPATH
+# Verify Go version
+if go version | grep -q "go1.23"; then
+    echo "Go 1.23 installed successfully."
+else
+    echo "Error: Go 1.23 not installed. Check installation steps."
+    exit 1
+fi
 ```
 
 **Notes**:
-- If Go is already installed, you can skip the `apt install` lines but ensure `GOPATH` is set.
-- Verify Go installation with `go version` (should be 1.18 or higher).
+- This installs Go 1.23 specifically, as required for Safrochain. The `wget` command downloads the 64-bit Linux binary; for other architectures (e.g., ARM), check https://go.dev/dl/.
+- The Go binary is installed in `/usr/local/go`, and its `bin` directory is added to `PATH`.
+- Verify with `go version` (should show `go1.23.x`). If a different version is installed, remove it with `sudo apt remove golang` and retry.
+- The `GOPATH` is set to `~/go` for building the Safrochain binary.
 
 ---
 
@@ -36,7 +52,7 @@ mkdir -p $GOPATH
 
 **What it does**: Clones the Safrochain node repository, builds the `safrochaind` binary, and adds the binary’s directory (`~/go/bin`) to your `PATH` so you can run `safrochaind` from any terminal directory.
 
-**Prerequisites**: Git and Go must be installed (from Step 1).
+**Prerequisites**: Git and Go 1.23 must be installed (from Step 1).
 
 **Code**:
 ```bash
@@ -294,11 +310,17 @@ fi
 echo "Enter a name for your validator wallet (e.g., validator):"
 read WALLET_NAME
 safrochaind keys add "$WALLET_NAME"
+echo "Your wallet address is displayed above. Visit https://faucet.safrochain.com, paste your address, and request testnet tokens (saf)."
 ```
 
 **Notes**:
 - Save the mnemonic phrase securely (e.g., write it down offline). Losing it means losing access to your wallet.
-- The wallet address will be displayed; share it with a faucet to receive testnet tokens.
+- Go to `https://faucet.safrochain.com`, enter your wallet address, and follow the instructions to request `saf` tokens. The faucet may have rate limits or require CAPTCHA.
+- Verify token receipt with:
+  ```bash
+  safrochaind query bank balances <your-wallet-address>
+  ```
+- If the faucet is unavailable, join Safrochain’s Discord, Telegram, or forum (check [Safrochain GitHub](https://github.com/Safrochain-Org)) to request tokens.
 
 ---
 
@@ -306,10 +328,12 @@ safrochaind keys add "$WALLET_NAME"
 
 **What it does**: Submits a transaction to stake tokens and register your node as a validator on the testnet.
 
-**Prerequisites**: You need testnet tokens (`saf`) in your wallet. Request them from a Safrochain faucet or community. Your node must be fully synced (check with `curl http://localhost:26657/status` and ensure `catching_up: false`).
+**Prerequisites**: You need testnet tokens (`saf`) in your wallet. Your node must be fully synced (check with `curl http://localhost:26657/status` and ensure `catching_up: false`).
 
 **Code**:
 ```bash
+# Before running, ensure you have testnet tokens (saf) from https://faucet.safrochain.com
+# Check balance with: safrochaind query bank balances <your-wallet-address>
 safrochaind tx staking create-validator \
   --amount <amount>saf \
   --pubkey $(safrochaind tendermint show-validator) \
@@ -323,7 +347,8 @@ safrochaind tx staking create-validator \
 ```
 
 **Notes**:
-- Replace `<amount>` with the number of tokens to stake (e.g., `1000saf`).
+- **Obtaining Tokens**: Use the faucet at `https://faucet.safrochain.com` to request `saf` tokens. If the faucet is down, check [Safrochain GitHub](https://github.com/Safrochain-Org) or join community channels (Discord, Telegram, or forum) to request tokens from other participants.
+- Replace `<amount>` with the number of tokens to stake (e.g., `1000saf`). Check testnet rules for minimum staking amounts via the faucet or community.
 - Ensure your node is running when executing this command.
 - Verify validator status with `safrochaind query staking validators`.
 
@@ -358,13 +383,14 @@ safrochaind tx staking create-validator \
 ### Troubleshooting
 - **Node not starting**: Check `safrochaind.log` for errors (e.g., invalid genesis file, port conflicts).
 - **Sync issues**: Ensure the genesis file is correct and ports are open. Consider enabling state sync in `config.toml` if the blockchain is large.
-- **No tokens**: Join Safrochain’s Discord, Telegram, or forum to request testnet tokens.
+- **No tokens**: Use the faucet at `https://faucet.safrochain.com`. If unavailable, join Safrochain’s Discord, Telegram, or forum (check [Safrochain GitHub](https://github.com/Safrochain-Org)) to request tokens.
 - **safrochaind not found**: Ensure `~/go/bin` is in your `PATH` (run `export PATH=$PATH:$HOME/go/bin` or check your shell config file).
+- **Wrong Go version**: If `go version` doesn’t show `go1.23.x`, remove existing Go installations (`sudo rm -rf /usr/local/go`, `sudo apt remove golang`) and retry Step 1.
 
 ## 🌐 Next Steps
 
-- **Join the Community**: Find Safrochain’s Discord, Telegram, or forum for support, faucet access, or testnet updates.
-- **Run a Faucet**: If no faucet exists, set up your own using a wallet with tokens and a simple web app (ask for a guide if needed).
+- **Join the Community**: Find Safrochain’s Discord, Telegram, or forum for support, faucet updates, or testnet news (check [Safrochain GitHub](https://github.com/Safrochain-Org)).
+- **Run a Faucet**: If the faucet at `https://faucet.safrochain.com` is insufficient, set up your own using a wallet with tokens and a simple web app (ask for a guide if needed).
 - **Deploy a Block Explorer**: Use tools like [Big Dipper](https://github.com/forbole/big_dipper) to visualize the testnet (ask for setup instructions).
 
 ## 📄 License
