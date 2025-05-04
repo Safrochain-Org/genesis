@@ -9,13 +9,16 @@ This guide walks you through setting up a Safrochain testnet node and creating a
   - Windows users must install WSL2 and Ubuntu (see Step 1 for Windows).
 - **Internet**: Stable connection for cloning repositories and syncing the blockchain.
 - **Permissions**: Root/admin access for installing packages and configuring firewalls.
-- **Testnet Tokens**: Required for validator creation. Request from the Safrochain testnet faucet at https://faucet.safrochain.com (provides 5,000 saf per request).
+- **Testnet Tokens**: Required for validator creation. Request from the Safrochain testnet faucet at https://faucet.safrochain.com (provides 5,000 tSaf per request).
+- **Main Node Info**: If syncing with an existing node (e.g., main node), obtain its node ID and address for seeding (optional, see Step 7).
+- **Home Directory**: Uses `~/.safrochain` for configuration and data.
+- **Testnet Denominations**: Uses `tSaf`, `tKuta`, `tHela` for testnet transactions (mainnet uses `saf`).
 
 ## 🚀 Setup Steps
 
 ### Step 1: Install Dependencies
 
-**What it does**: Installs Go 1.23, git, and make, which are required to build and run the Safrochain node. It also sets up the Go environment. Instructions vary by operating system.
+**What it does**: Installs Go 1.23, git, make, and jq (for JSON parsing), which are required to build and run the Safrochain node. It also sets up the Go environment. Instructions vary by operating system.
 
 **Prerequisites**: Run with administrative privileges (`sudo` on Linux/macOS, admin terminal in WSL2).
 
@@ -24,7 +27,7 @@ This guide walks you through setting up a Safrochain testnet node and creating a
 #### Linux (Ubuntu)
 ```bash
 sudo apt update
-sudo apt install -y git make
+sudo apt install -y git make jq
 # Download and install Go 1.23
 wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go
@@ -46,20 +49,27 @@ fi
 
 #### macOS
 ```bash
-# Install Homebrew if not present
-if ! command -v brew &> /dev/null; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
-brew install git make go@1.23
+# Install git, make, and jq
+xcode-select --install || true
+brew install jq || true
+# Download and install Go 1.23
+curl -LO https://go.dev/dl/go1.23.0.darwin-amd64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.23.0.darwin-amd64.tar.gz
+rm go1.23.0.darwin-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
 # Set up Go environment
 export GOPATH=$HOME/go
-export PATH=$PATH:$GOPATH/bin:/usr/local/opt/go@1.23/bin
+export PATH=$PATH:$GOPATH/bin
 mkdir -p $GOPATH
+# Make PATH changes permanent
+echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> $HOME/.zshrc
+source $HOME/.zshrc
 # Verify Go version
 if go version | grep -q "go1.23"; then
     echo "Go 1.23 installed successfully."
 else
-    echo "Error: Go 1.23 not installed. Check installation steps."
+    echo "Error: Go 1.23 not installed. Check installation steps or run 'sudo rm -rf /usr/local/go' and retry."
     exit 1
 fi
 ```
@@ -71,7 +81,7 @@ fi
 # wsl --install
 # After Ubuntu setup, run in Ubuntu WSL2 terminal:
 sudo apt update
-sudo apt install -y git make
+sudo apt install -y git make jq
 # Download and install Go 1.23
 wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go
@@ -93,16 +103,16 @@ fi
 
 **Notes**:
 - **Linux**: Installs Go 1.23 via official tarball. Use `https://go.dev/dl/` for other architectures (e.g., ARM).
-- **macOS**: Uses Homebrew to install `go@1.23`. Ensure Homebrew is installed.
-- **Windows**: Requires WSL2 with Ubuntu. Run `wsl --install` in PowerShell if WSL2 isn’t set up, then follow Linux steps in the Ubuntu WSL2 terminal.
-- Verify with `go version` (should show `go1.23.x`). If incorrect, remove existing Go (`sudo rm -rf /usr/local/go` on Linux/WSL2, `brew uninstall go` on macOS) and retry.
-- The `GOPATH` is set to `~/go` for building the Safrochain binary.
+- **macOS**: Installs Go 1.23 via official tarball. Requires Xcode Command Line Tools and Homebrew for jq. If using Bash, replace `.zshrc` with `.bashrc`.
+- **Windows**: Requires WSL2 with Ubuntu. Run `wsl --install` in PowerShell if WSL2 isn’t set up.
+- Verify with `go version` (should show `go1.23.x`). If incorrect, remove existing Go (`sudo rm -rf /usr/local/go`) and retry.
+- The `GOPATH` is set to `~/go` for building the Safrochain binary. `jq` is used in later steps for troubleshooting.
 
 ---
 
 ### Step 2: Clone Repository, Build Binary, and Export Binary Path
 
-**What it does**: Clones the Safrochain node repository, builds the `safrochaind` binary, and adds the binary’s directory (`~/go/bin`) to your `PATH` so you can run `safrochaind` from any terminal directory. PATH configuration varies by OS.
+**What it does**: Clones the Safrochain node repository, builds the `safrochaind` binary, and adds `~/go/bin` to your `PATH`. PATH configuration varies by OS.
 
 **Prerequisites**: Git and Go 1.23 must be installed (from Step 1).
 
@@ -114,18 +124,16 @@ git clone https://github.com/Safrochain-Org/safrochain-node.git
 cd safrochain-node
 make install
 
-# Add ~/go/bin to PATH for the current session
+# Add ~/go/bin to PATH
 export PATH=$PATH:$HOME/go/bin
-
-# Make PATH change permanent
 echo 'export PATH=$PATH:$HOME/go/bin' >> $HOME/.bashrc
 source $HOME/.bashrc
 
-# Verify safrochaind is accessible
+# Verify safrochaind
 if command -v safrochaind &> /dev/null; then
-    echo "safrochaind is accessible from the command line."
+    echo "safrochaind is accessible."
 else
-    echo "Error: safrochaind not found in PATH. Check if ~/go/bin/safrochaind exists and PATH is set correctly."
+    echo "Error: safrochaind not found. Check if ~/go/bin/safrochaind exists."
     exit 1
 fi
 ```
@@ -136,18 +144,16 @@ git clone https://github.com/Safrochain-Org/safrochain-node.git
 cd safrochain-node
 make install
 
-# Add ~/go/bin to PATH for the current session
+# Add ~/go/bin to PATH
 export PATH=$PATH:$HOME/go/bin
-
-# Make PATH change permanent
 echo 'export PATH=$PATH:$HOME/go/bin' >> $HOME/.zshrc
 source $HOME/.zshrc
 
-# Verify safrochaind is accessible
+# Verify safrochaind
 if command -v safrochaind &> /dev/null; then
-    echo "safrochaind is accessible from the command line."
+    echo "safrochaind is accessible."
 else
-    echo "Error: safrochaind not found in PATH. Check if ~/go/bin/safrochaind exists and PATH is set correctly."
+    echo "Error: safrochaind not found. Check if ~/go/bin/safrochaind exists."
     exit 1
 fi
 ```
@@ -155,63 +161,66 @@ fi
 **Notes**:
 - The binary is installed in `~/go/bin/safrochaind`.
 - **Linux/WSL2**: Uses `.bashrc` for PATH persistence.
-- **macOS**: Uses `.zshrc` (default for modern macOS). If using Bash, replace `.zshrc` with `.bashrc`.
-- **Windows**: WSL2 uses the Linux steps, as it runs Ubuntu.
-- If your shell differs (e.g., Fish), manually add `export PATH=$PATH:$HOME/go/bin` to its config (e.g., `~/.config/fish/config.fish`).
-- Verify with `safrochaind version`. If it fails, check if `~/go/bin/safrochaind` exists and retry the `export` commands.
+- **macOS**: Uses `.zshrc`. If using Bash, replace with `.bashrc`.
+- **Windows**: WSL2 uses Linux steps.
+- If your shell differs (e.g., Fish), add `export PATH=$PATH:$HOME/go/bin` to its config (e.g., `~/.config/fish/config.fish`).
+- Verify with `safrochaind version`.
 
 ---
 
 ### Step 3: Initialize Node
 
-**What it does**: Initializes the node with a user-defined moniker (node name) and creates the default configuration directory (`~/.safrochain`).
+**What it does**: Initializes the node with a moniker and creates the configuration directory (`~/.safrochain`).
 
-**Prerequisites**: `safrochaind` binary must be built and accessible.
+**Prerequisites**: `safrochaind` binary must be built.
 
 **Code**:
 ```bash
 echo "Enter a moniker for your node (e.g., my-node):"
 read MONIKER
-safrochaind init "$MONIKER" --chain-id safrochain-testnet
+safrochaind init "$MONIKER" --chain-id safrochain-testnet --home $HOME/.safrochain
 ```
 
 **Notes**:
-- The moniker is a public name for your node. Choose something unique.
-- This creates `~/.safrochain/config/` with default files like `genesis.json` (which we’ll replace).
-- This step is identical across Linux, macOS, and Windows (WSL2).
+- The moniker is a public node name.
+- Creates `~/.safrochain/config/` with default files like `genesis.json`.
 
 ---
 
 ### Step 4: Configure Genesis File
 
-**What it does**: Downloads the official Safrochain testnet `genesis.json` file from the provided URL and places it in the node’s configuration directory.
+**What it does**: Downloads the official `genesis.json` file from the Safrochain testnet repository and places it in the node’s configuration directory.
 
-**Prerequisites**: Internet access to download the file.
+**Prerequisites**: Internet access, Step 3 completed to create the configuration directory.
 
 **Code**:
 ```bash
-curl -o $HOME/.safrochain/config/genesis.json https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json
+curl -L -o $HOME/.safrochain/config/genesis.json https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json
 if [ -f "$HOME/.safrochain/config/genesis.json" ]; then
     echo "genesis.json downloaded successfully."
 else
-    echo "Error: Failed to download genesis.json. Check the URL or internet connection."
+    echo "Error: Failed to download genesis.json. Check the URL, internet connection, or ensure ~/.safrochain/config/ exists."
+    echo "Contact Safrochain’s community (https://github.com/Safrochain-Org, Discord, or Telegram) for the correct genesis file."
     exit 1
 fi
 ```
 
 **Notes**:
-- The genesis file is sourced from `https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json`.
-- If the download fails, verify the URL or check Safrochain’s GitHub/community for an updated link.
-- Confirm the file exists with `ls ~/.safrochain/config/genesis.json`.
-- This step is identical across all platforms.
+- Downloads from `https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json` using `curl -L` to follow redirects.
+- Overwrites any existing `genesis.json` in `~/.safrochain/config/`.
+- If the download fails or later errors (e.g., `validator set is empty`) occur, verify the URL in a browser or contact the Safrochain community for an updated `genesis.json` matching the main node’s network.
+- To manually inspect the file:
+  ```bash
+  cat $HOME/.safrochain/config/genesis.json
+  ```
 
 ---
 
 ### Step 5: Configure Node Settings
 
-**What it does**: Sets up configuration files (`app.toml`, `config.toml`, `client.toml`) with settings for gas prices, ports, consensus, and more. It also prompts for your node’s external IP.
+**What it does**: Sets up configuration files (`app.toml`, `config.toml`, `client.toml`) with gas prices, ports, and consensus settings.
 
-**Prerequisites**: Node must be initialized (Step 3).
+**Prerequisites**: Node initialized (Step 3).
 
 **Code**:
 ```bash
@@ -224,7 +233,7 @@ fi
 
 # app.toml
 cat > "$NODE_DIR/config/app.toml" <<EOL
-minimum-gas-prices = "0.001saf"
+minimum-gas-prices = "0.001tSaf"
 
 [api]
 enable = true
@@ -324,17 +333,17 @@ EOL
 ```
 
 **Notes**:
-- The external IP is needed if your node is on a public server or behind a router (use your public IP or local network IP like `192.168.x.x`).
-- These settings enable API, gRPC, and P2P ports while keeping sensitive ports (e.g., `26658`, `6060`) local.
-- This step is identical across all platforms.
+- Sets `minimum-gas-prices` to `0.001tSaf` for testnet.
+- The external IP is needed for public servers or routers.
+- Settings enable API, gRPC, and P2P ports, keeping sensitive ports local.
 
 ---
 
 ### Step 6: Open Required Ports
 
-**What it does**: Configures the firewall to allow traffic on ports `26656` (P2P), `26657` (RPC), `1317` (API), and `9090` (gRPC), while blocking sensitive ports.
+**What it does**: Configures the firewall to allow ports `26656` (P2P), `26657` (RPC), `1317` (API), and `9090` (gRPC).
 
-**Prerequisites**: Firewall tools must be installed (`ufw` on Linux/WSL2, macOS firewall, or Windows Firewall).
+**Prerequisites**: Firewall tools installed (`ufw` for Linux/WSL2, macOS firewall, Windows Firewall).
 
 **Code**:
 
@@ -347,107 +356,161 @@ sudo ufw enable
 
 #### macOS
 ```bash
-# macOS uses pfctl or GUI firewall; ufw is not standard
 # Open ports via terminal (requires sudo)
 sudo /sbin/pfctl -f /etc/pf.conf
 echo "pass in proto tcp from any to any port {26656, 26657, 1317, 9090}" | sudo pfctl -f -
 sudo pfctl -E
-# Alternatively, open System Preferences > Security & Privacy > Firewall > Firewall Options
+# Alternatively, use System Preferences > Security & Privacy > Firewall > Firewall Options
 # Add safrochaind and allow ports 26656, 26657, 1317, 9090
 ```
 
 **Notes**:
-- **Linux/WSL2**: Uses `ufw`. Confirm with `sudo ufw status`.
-- **macOS**: Uses `pfctl` or System Preferences. The `pfctl` command is temporary; for persistence, edit `/etc/pf.conf` or use the GUI.
-- **Windows**: WSL2 uses the Linux firewall (ufw). For the host Windows Firewall, open ports manually:
-  - Run in PowerShell (as Administrator):
-    ```powershell
-    New-NetFirewallRule -DisplayName "Safrochain" -Direction Inbound -Protocol TCP -LocalPort 26656,26657,1317,9090 -Action Allow
-    ```
-- If on a cloud server, open these ports in your provider’s security group (e.g., AWS, GCP).
-- This step is platform-specific due to firewall differences.
+- **Linux/WSL2**: Verify with `sudo ufw status`.
+- **macOS**: `pfctl` is temporary; edit `/etc/pf.conf` or use GUI for persistence.
+- **Windows**: For host Windows Firewall, run in PowerShell (as Administrator):
+  ```powershell
+  New-NetFirewallRule -DisplayName "Safrochain" -Direction Inbound -Protocol TCP -LocalPort 26656,26657,1317,9090 -Action Allow
+  ```
+- Open ports in cloud provider security groups if needed.
 
 ---
 
 ### Step 7: Start the Node
 
-**What it does**: Starts the Safrochain node in the background, redirects output to a log file, and verifies the node is running.
+**What it does**: Starts the node, configures peers, and handles potential errors like OE hash mismatches.
 
-**Prerequisites**: Configuration files and genesis file must be set up.
+**Prerequisites**: Configuration files and genesis file set up.
 
 **Code**:
 ```bash
-safrochaind start > safrochaind.log 2>&1 &
+# Configure main node or community seeds
+echo "Enter the main node’s ID@IP:26656 (e.g., 12345abcde@192.168.1.100:26656, or press Enter to skip):"
+read MAIN_NODE_PEER
+if [ -n "$MAIN_NODE_PEER" ]; then
+    sed -i.bak "s/seeds = \"\"/seeds = \"$MAIN_NODE_PEER\"/g" $HOME/.safrochain/config/config.toml
+    echo "Main node added as a seed peer."
+fi
+
+# Reset node state
+safrochaind tendermint unsafe-reset-all --home $HOME/.safrochain
+
+# Start the node
+safrochaind start --home $HOME/.safrochain > safrochaind.log 2>&1 &
 sleep 5
 if pgrep safrochaind > /dev/null; then
     echo "Node is running. Logs are in safrochaind.log."
 else
-    echo "Error: Node failed to start. Check safrochaind.log."
+    echo "Error: Node failed to start. Check safrochaind.log for details."
+    echo "If you see 'validator set is empty':"
+    echo "1. Verify Step 4 (genesis.json download)."
+    echo "2. Redownload genesis.json: curl -L -o $HOME/.safrochain/config/genesis.json https://raw.githubusercontent.com/Safrochain-Org/genesis/refs/heads/main/genesis-testnet.json"
+    echo "3. Reset state: safrochaind tendermint unsafe-reset-all --home $HOME/.safrochain"
+    echo "4. Contact Safrochain’s community for an updated genesis file."
+    echo "If you see 'OE aborted due to hash mismatch':"
+    echo "1. Ensure reliable peers (main node or community seeds)."
+    echo "2. Reset state again."
+    echo "3. Disable OE: Add 'optimistic_execution_enabled = false' under [consensus] in $HOME/.safrochain/config/config.toml"
+    echo "4. Contact Safrochain’s community for OE guidance."
     exit 1
 fi
 ```
 
 **Notes**:
-- Check logs with `cat safrochaind.log` or `tail -f safrochaind.log` if the node fails to start.
-- Verify node status with `curl http://localhost:26657/status`. It may take time to sync.
-- This step is identical across Linux, macOS, and Windows (WSL2).
+- Check logs: `tail -f safrochaind.log`.
+- Verify status: `curl http://localhost:26657/status`.
+- For OE hash mismatch errors, follow the troubleshooting steps or disable OE:
+  ```bash
+  pkill safrochaind
+  echo -e "\n[consensus]\noptimistic_execution_enabled = false" >> $HOME/.safrochain/config/config.toml
+  safrochaind tendermint unsafe-reset-all --home $HOME/.safrochain
+  safrochaind start --home $HOME/.safrochain
+  ```
 
 ---
 
 ### Step 8: Create Validator Wallet
 
-**What it does**: Creates a wallet for your validator, which will hold testnet tokens and sign validator transactions.
+**What it does**: Creates a wallet for validator transactions.
 
-**Prerequisites**: Node must be running.
+**Prerequisites**: Node running.
 
 **Code**:
 ```bash
 echo "Enter a name for your validator wallet (e.g., validator):"
 read WALLET_NAME
-safrochaind keys add "$WALLET_NAME"
-echo "Your wallet address is displayed above. Visit https://faucet.safrochain.com, paste your address, and request 5,000 saf (5,000,000,000 Lovelace)."
+safrochaind keys add "$WALLET_NAME" --keyring-backend os --home $HOME/.safrochain
+WALLET_ADDRESS=$(safrochaind keys show "$WALLET_NAME" -a --home $HOME/.safrochain)
+echo "Your wallet address is: $WALLET_ADDRESS"
+echo "Visit https://faucet.safrochain.com, paste your address, and request 5,000 tSaf."
 ```
 
 **Notes**:
-- Save the mnemonic phrase securely (e.g., write it down offline). Losing it means losing access to your wallet.
-- Go to `https://faucet.safrochain.com`, enter your wallet address, and request tokens. Each request provides **5,000 saf** (equivalent to 5,000,000,000 Lovelace, as 1 saf = 1,000,000 Lovelace).
-- Verify token receipt with:
+- Save the mnemonic phrase securely (offline).
+- Request tokens at `https://faucet.safrochain.com` (5,000 tSaf).
+- Verify balance:
   ```bash
-  safrochaind query bank balances <your-wallet-address>
+  safrochaind query bank balances "$WALLET_ADDRESS" --home $HOME/.safrochain
   ```
-- The faucet may have rate limits or require CAPTCHA. If unavailable, join Safrochain’s Discord, Telegram, or forum (check [Safrochain GitHub](https://github.com/Safrochain-Org)) to request tokens.
-- This step is identical across all platforms.
+- If faucet is down, join Safrochain’s community for tokens.
+- Testnet addresses use the `taddr_safro` prefix (mainnet uses `addr_safro`).
 
 ---
 
 ### Step 9: Create Validator
 
-**What it does**: Submits a transaction to stake tokens and register your node as a validator on the testnet.
+**What it does**: Submits a transaction to stake tokens and register your node as a validator using a JSON configuration file.
 
-**Prerequisites**: You need testnet tokens (`saf`) in your wallet from the faucet. Your node must be fully synced (check with `curl http://localhost:26657/status` and ensure `catching_up: false`).
+**Prerequisites**: Tokens in wallet, node fully synced (`curl http://localhost:26657/status` shows `catching_up: false`).
 
 **Code**:
 ```bash
-# Before running, ensure you have 5,000,000,000 saf from https://faucet.safrochain.com
-# Check balance with: safrochaind query bank balances <your-wallet-address>
-safrochaind tx staking create-validator \
-  --amount <amount>saf \
-  --pubkey $(safrochaind tendermint show-validator) \
-  --moniker "$MONIKER" \
+# Check sync status
+curl http://localhost:26657/status | jq '.result.sync_info'
+# Wait for catching_up: false
+watch -n 10 "curl -s http://localhost:26657/status | jq '.result.sync_info'"
+
+# Get validator public key
+PUBKEY=$(safrochaind tendermint show-validator --home $HOME/.safrochain)
+
+# Create validator.json
+cat > $HOME/validator.json <<EOL
+{
+  "pubkey": $PUBKEY,
+  "amount": "5000tSaf",
+  "moniker": "$MONIKER",
+  "identity": "",
+  "website": "",
+  "security": "",
+  "details": "My Safrochain testnet validator",
+  "commission-rate": "0.1",
+  "commission-max-rate": "0.2",
+  "commission-max-change-rate": "0.01",
+  "min-self-delegation": "1"
+}
+EOL
+
+# Verify JSON
+jq . $HOME/validator.json
+
+# Submit validator transaction
+safrochaind tx staking create-validator $HOME/validator.json \
+  --from "$WALLET_NAME" \
   --chain-id safrochain-testnet \
-  --commission-rate 0.1 \
-  --commission-max-rate 0.2 \
-  --commission-max-change-rate 0.01 \
-  --min-self-delegation 1 \
-  --from "$WALLET_NAME"
+  --fees 5tSaf \
+  --keyring-backend os \
+  --home $HOME/.safrochain
 ```
 
 **Notes**:
-- **Obtaining Tokens**: Use the faucet at `https://faucet.safrochain.com` to request **5,000 saf** per request (5,000,000 Lovelace). If the faucet is down, check [Safrochain GitHub](https://github.com/Safrochain-Org) or join community channels (Discord, Telegram, or forum) to request tokens.
-- Replace `<amount>` with the number of tokens to stake (e.g., `5000000000saf` for one faucet request). Check testnet rules for minimum staking amounts via the faucet or community.
-- Ensure your node is running when executing this command.
-- Verify validator status with `safrochaind query staking validators`.
-- This step is identical across all platforms.
+- **Obtaining Tokens**: Use `https://faucet.safrochain.com` for 5,000 tSaf. If down, request tokens via Safrochain’s community.
+- Check balance: `safrochaind query bank balances "$WALLET_ADDRESS" --home $HOME/.safrochain`.
+- Adjust `amount` in `validator.json` if you have more/less tokens.
+- Alternative denominations (`tKuta`, `tHela`) may be used if specified by the testnet; replace `tSaf` in `amount` and `--fees` as needed.
+- Verify validator:
+  ```bash
+  safrochaind query staking validators --home $HOME/.safrochain | grep -A 5 "$MONIKER"
+  ```
+- If the command fails with `unknown flag`, ensure `validator.json` is correct (`jq . $HOME/validator.json`).
 
 ---
 
@@ -456,40 +519,53 @@ safrochaind tx staking create-validator \
 ### Monitor the Node
 - **Check logs**:
   ```bash
-  journalctl -fu safrochaind
+  tail -f safrochaind.log
   ```
 - **Check status**:
   ```bash
   curl http://localhost:26657/status
   ```
-- **View node ID** (useful for connecting other nodes):
+- **View node ID**:
   ```bash
-  safrochaind tendermint show-node-id
+  safrochaind tendermint show-node-id --home $HOME/.safrochain
   ```
 
 ### Stop the Node
-- Find the process ID:
+- Find process ID:
   ```bash
   pgrep safrochaind
   ```
-- Kill the process (replace `<pid>` with the ID):
+- Kill process:
   ```bash
   kill <pid>
   ```
 
 ### Troubleshooting
-- **Node not starting**: Check `safrochaind.log` for errors (e.g., invalid genesis file, port conflicts).
-- **Sync issues**: Ensure the genesis file is correct and ports are open. Consider enabling state sync in `config.toml` if the blockchain is large.
-- **No tokens**: Use the faucet at `https://faucet.safrochain.com` (provides 5,000 saf). If unavailable, join Safrochain’s Discord, Telegram, or forum (check [Safrochain GitHub](https://github.com/Safrochain-Org)).
-- **safrochaind not found**: Ensure `~/go/bin` is in your `PATH` (run `export PATH=$PATH:$HOME/go/bin` or check your shell config file).
-- **Wrong Go version**: If `go version` doesn’t show `go1.23.x`, remove existing Go (`sudo rm -rf /usr/local/go` on Linux/WSL2, `brew uninstall go` on macOS) and retry Step 1.
-- **Firewall issues**: Verify ports 26656, 26657, 1317, 9090 are open (`sudo ufw status` on Linux/WSL2, check macOS/Windows firewall settings).
+- **Node not starting**: Check `safrochaind.log` for errors.
+- **Empty validator set**:
+  - Verify Step 4 download.
+  - Redownload: `curl -L -o $HOME/.safrochain/config/genesis.json <correct-url>`.
+  - Reset: `safrochaind tendermint unsafe-reset-all --home $HOME/.safrochain`.
+  - Contact community for a matching genesis file.
+- **OE hash mismatch**:
+  - Configure reliable peers (Step 7).
+  - Reset state: `safrochaind tendermint unsafe-reset-all --home $HOME/.safrochain`.
+  - Disable OE: Add `optimistic_execution_enabled = false` under `[consensus]` in `config.toml`.
+  - Contact community for guidance.
+- **create-validator errors**:
+  - Verify `validator.json`: `jq . $HOME/validator.json`.
+  - Ensure sufficient tokens: `safrochaind query bank balances <address> --home $HOME/.safrochain`.
+  - Check node sync: `curl http://localhost:26657/status`.
+- **No tokens**: Use faucet or community channels.
+- **safrochaind not found**: Add `~/go/bin` to PATH: `export PATH=$PATH:$HOME/go/bin`.
+- **Wrong Go version**: Remove Go (`sudo rm -rf /usr/local/go`) and retry Step 1.
+- **Firewall issues**: Verify ports 26656, 26657, 1317, 9090 (`sudo ufw status` or macOS/Windows firewall settings).
 
 ## 🌐 Next Steps
 
-- **Join the Community**: Find Safrochain’s Discord, Telegram, or forum for support, faucet updates, or testnet news (check [Safrochain GitHub](https://github.com/Safrochain-Org)).
-- **Run a Faucet**: If the faucet at `https://faucet.safrochain.com` is insufficient, set up your own using a wallet with tokens and a web app (ask for a guide).
-- **Deploy a Block Explorer**: Use tools like [Big Dipper](https://github.com/forbole/big_dipper) to visualize the testnet (ask for setup instructions).
+- **Join the Community**: Find Safrochain’s Discord, Telegram, or forum for support (check [Safrochain GitHub](https://github.com/Safrochain-Org)).
+- **Run a Faucet**: Set up a faucet if needed (ask for a guide).
+- **Deploy a Block Explorer**: Use tools like [Big Dipper](https://github.com/forbole/big_dipper) (ask for setup instructions).
 
 ## 📄 License
 
